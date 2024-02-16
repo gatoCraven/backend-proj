@@ -21,3 +21,5 @@ const uploadOnCLoud = async function (filePath){
         return null;
     }
 }
+
+export {uploadOnCLoud};
