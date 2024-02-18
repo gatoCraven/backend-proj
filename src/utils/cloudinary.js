@@ -14,7 +14,7 @@ const uploadOnCLoud = async function (filePath){
             resource_type: 'auto'
         });
         fs.unlinkSync(filePath);
-        console.log('File uploaded on coudinary. ', response.url);
+        // console.log('File uploaded on coudinary. ', response.url);
         return response;
     } catch (error) {
         fs.unlinkSync(filePath);

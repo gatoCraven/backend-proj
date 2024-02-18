@@ -7,26 +7,34 @@ import { apiResponse } from "../utils/apiresponse.js";
 const registerUser = asynchandler(async (req, res) => {
     
     const {username,fullname,email,password} = req.body;
-    if([fullname,username,email,password].some((field)=>field?.trim === "")){
+    // if([fullname,username,email,password].some((field)=>field?.trim == "")){
+    //     throw new apiError(400, `All fields must be filled`);
+    // }
+    if(!(username || fullname || email || password)){
         throw new apiError(400, `All fields must be filled`);
     }
     // Checking if the user already exists in the database
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or : [{username},{email}]
     });
-    console.log(existedUser);
+
     if(existedUser?._id){
         throw new apiError(409,"Username or email already in use.")
     }
-    console.log(req.files);
+
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImagePath = req.files?.coverimage[0]?.path;
+    let coverImagepath;
+
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImagepath = req.files.coverImage[0].path;
+    }
+    
     if(!avatarLocalPath){
         throw new apiError(409,"Avatar Image is required.")
     }
 
     const avatar = await uploadOnCLoud(avatarLocalPath);
-    const coverImage = await uploadOnCLoud(coverImagePath);
+    const coverImage = await uploadOnCLoud(coverImagepath);
 
     if(!avatar){
         throw new apiError(409,"Avatar Image is required.");
@@ -42,11 +50,102 @@ const registerUser = asynchandler(async (req, res) => {
     });
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken");
-    console.log(createdUser);
-    res.send(createdUser);
 
     return res.status(201).json(new apiResponse(201,createdUser,"User Created."));
 });
 
+const generateTokens = async (user)=>{
+    try {
+        const logUser = User.findById(user._id);
+        console.log(logUser);
+        const accesstoken =  await logUser.generateAccessTokens();
+        const refreshToken = await logUser.generateRefreshTokens();
+            console.log(accessToken);
+            console.log(refreshToken);
+        user.refreshToken = refreshToken
+        await user.save({validateBeforeSave: false});
 
-export {registerUser};
+        return {accesstoken,refreshToken};
+    } catch (error) {
+        throw new  apiError(500, error?.message || "Something went wrong while generating tokens.");
+    }
+}
+
+const loginUser = asynchandler(async (req,res)=>{
+    const {email,username,password} = req.body;
+
+    if(!(email || username)){
+        return apiError(400,"email or username required.");
+    }
+    const user = await User.findOne({
+        $or:[{username},{email}]
+    })
+
+    if(!user){
+        return apiError(404,"User not found.")
+    }
+
+    if(!password){
+        return apiError(400,"Password Required")
+    }
+
+    const validatePassword = user.isPasswordCorrect(password);
+
+    if(!validatePassword){
+        return apiError(403,"Bad Credentials")
+    }
+
+    const {accessToken,refreshToken} = generateTokens(user);
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+    console.log(loggedInUser);
+
+    const options = {
+        httpOnly:true,
+        secure:true
+    }
+
+    return res
+    .status(200)
+    // .cookie("accesstoken",accessToken,options)
+    // .cookie("refreshtoken",refreshToken,options)
+    .json(
+        new apiResponse(
+            200,
+            {
+                user:loggedInUser,
+                accessToken,
+                refreshToken
+            },
+            "User logged in successfully."
+        )
+    )
+});
+
+const logoutUser = asynchandler(async(req,res)=>{
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        }
+    );
+
+    const options = {
+        httpOnly:true,
+        secure:true
+    }
+
+    return res
+    .status(200)
+    // .clearCookie("accesstoken",options)
+    // .clearCookie("refreshtoken",options)
+    .json(new apiResponse(200,{} ,'Logged out Successfully'));
+});
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser
+};
