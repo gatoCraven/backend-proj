@@ -22,9 +22,11 @@ const registerUser = asynchandler(async (req, res) => {
         throw new apiError(409,"Username or email already in use.")
     }
 
-    const avatarLocalPath = req.files?.avatar[0]?.path;
+    let avatarLocalPath; //= req.files?.avatar[0]?.path;
     let coverImagepath;
-
+    if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0){
+        avatarLocalPath = req.files.avatar[0].path;
+    }
     if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
         coverImagepath = req.files.coverImage[0].path;
     }
@@ -56,18 +58,15 @@ const registerUser = asynchandler(async (req, res) => {
 
 const generateTokens = async (user)=>{
     try {
-        const logUser = User.findById(user._id);
-        console.log(logUser);
-        const accesstoken =  await logUser.generateAccessTokens();
-        const refreshToken = await logUser.generateRefreshTokens();
-            console.log(accessToken);
-            console.log(refreshToken);
+        const accessToken =  await user.generateAccessTokens();
+        const refreshToken = await user.generateRefreshTokens();
         user.refreshToken = refreshToken
         await user.save({validateBeforeSave: false});
 
-        return {accesstoken,refreshToken};
+        return {accessToken,refreshToken};
+        
     } catch (error) {
-        throw new  apiError(500, error?.message || "Something went wrong while generating tokens.");
+        throw new  apiError(500, error?.message || "Something went wrong" );
     }
 }
 
@@ -95,31 +94,26 @@ const loginUser = asynchandler(async (req,res)=>{
         return apiError(403,"Bad Credentials")
     }
 
-    const {accessToken,refreshToken} = generateTokens(user);
-
-    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
-    console.log(loggedInUser);
+    const {accessToken,refreshToken} = await generateTokens(user);
+    const logUser = await User.findById(user._id).select("-password -refreshToken");
 
     const options = {
         httpOnly:true,
         secure:true
     }
+    const response = new apiResponse(200,
+        {
+        user:logUser,
+        accessToken,
+        refreshToken
+    },
+    "User Logged in succesfully");
 
     return res
     .status(200)
     // .cookie("accesstoken",accessToken,options)
     // .cookie("refreshtoken",refreshToken,options)
-    .json(
-        new apiResponse(
-            200,
-            {
-                user:loggedInUser,
-                accessToken,
-                refreshToken
-            },
-            "User logged in successfully."
-        )
-    )
+    .json(response)
 });
 
 const logoutUser = asynchandler(async(req,res)=>{
