@@ -3,6 +3,12 @@ import { apiError } from "../utils/apierror.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCLoud } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiresponse.js";
+import bcrypt from "bcrypt";
+
+const passwordHash = async function(password){
+    // if(!this.isModified(this.password)) {return next;}
+    return await bcrypt.hash(password, 10);
+};
 
 const registerUser = asynchandler(async (req, res) => {
     
@@ -41,13 +47,13 @@ const registerUser = asynchandler(async (req, res) => {
     if(!avatar){
         throw new apiError(409,"Avatar Image is required.");
     }
-
+    const hashedPassword = await passwordHash(password);
     const user = await User.create({
         fullname,
         avatar: avatar.url,
         coverImage: coverImage?.url || "",
         email,
-        password,
+        password : hashedPassword,
         username: username.toLowerCase() 
     });
 
