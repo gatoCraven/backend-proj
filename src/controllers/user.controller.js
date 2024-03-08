@@ -159,8 +159,6 @@ const refreshAccessToken =  asynchandler(async(req,res)=>{
 
             const user = await User.findById(decodedToken?._id);
             
-            // console.log(user);
-
             if(!user){
                 throw new apiError(401,"Invalid refresh token");
             }
@@ -170,7 +168,7 @@ const refreshAccessToken =  asynchandler(async(req,res)=>{
             }
     
             const {accessToken,refreshToken} =await generateTokens(user);
-            console.log({accessToken,refreshToken});
+
             const options = {
                 httpOnly:true,
                 secure:true
