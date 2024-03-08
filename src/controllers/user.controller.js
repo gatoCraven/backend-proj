@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCLoud } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiresponse.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const passwordHash = async function(password){
     // if(!this.isModified(this.password)) {return next;}
@@ -144,8 +145,57 @@ const logoutUser = asynchandler(async(req,res)=>{
     .json(new apiResponse(200,{} ,'Logged out Successfully'));
 });
 
+const refreshAccessToken =  asynchandler(async(req,res)=>{
+    const token = 
+        // req.cookies?.accessToken ||
+        req.body.refreshToken;
+    
+        if(!token){
+            throw new apiError(401,"Unauthorised request");
+        }
+
+        try {
+            const decodedToken = jwt.verify(token , process.env.REFRESH_TOKEN_SECRET);
+
+            const user = await User.findById(decodedToken?._id);
+            
+            // console.log(user);
+
+            if(!user){
+                throw new apiError(401,"Invalid refresh token");
+            }
+            
+            if(user?.refreshToken !== token){
+                throw new apiError(401,"Refresh Token invalid/expired");
+            }
+    
+            const {accessToken,refreshToken} =await generateTokens(user);
+            console.log({accessToken,refreshToken});
+            const options = {
+                httpOnly:true,
+                secure:true
+            }
+            
+            const response = new apiResponse(200,
+                {
+                accessToken,
+                refreshToken
+            },
+            "Access Token refreshed succesfully");
+        
+            return res
+            .status(200)
+            // .cookie("accesstoken",accessToken,options)
+            // .cookie("refreshtoken",refreshToken,options)
+            .json(response)
+        } catch (error) {
+            throw new apiError(401, error?.message || "Error while refreshing token")
+        }
+});
+
 export {
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    refreshAccessToken
 };
