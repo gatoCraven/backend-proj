@@ -210,15 +210,102 @@ const changePassword = asynchandler(async(req,res)=>{
     ));
 });
 
-// const updateInfo = asynchandler((req,res)=>{
-//     const user = await User.findById(req.user?._id);
-//     const updates = req.body
-// });
+const getcurrentuser = asynchandler(async (req,res)=>{
+    // const user = await User.findById(req.user?._id).select("-password -refreshToken");
+    return res
+    .status(200)
+    .json(new apiResponse(200,req.user,"user fetched succesfully."));
+});
+
+const updateInfo = asynchandler(async (req,res)=>{
+    const {username,email,fullname} = req.body();
+    if(!fullname||!email||!username){
+        return new apiError(400,"All fields are required.")
+    }
+    const user =await User.findByIdAndUpdate(
+        req.user?._idid,
+        {
+            $set:{
+                fullname,
+                email,
+                username
+            }
+        },
+        {new:true}).select("-password -refreshToken");
+    
+    return res
+    .status(200)
+    .json(new apiResponse(
+        200,
+        user,
+        "User info updated."
+    ));
+});
+
+const updateavatar = asynchandler(async(req,res)=>{
+    let avatarlocalpath = req.file?.path;
+    // if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0){
+    //     avatarlocalpath = req.files.avatar[0].path;
+    // }
+    if(!avatarlocalpath){
+        return new apiError(400,"Avatar Image not uploaded.")
+    }
+    const avatar = await uploadOnCLoud(avatarlocalpath);
+
+    if(!avatar.url){
+        return new apiError(400,"Error while uploading avatar.")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id,
+    {
+        $set:{avatar:avatar.url}
+    },{new : true}).select("-password -refreshToken");
+
+    return res
+    .status(200)
+    .json(new apiResponse(
+        200,
+        user,
+        "Avatar Image updated."
+    ));
+});
+
+const updatecover = asynchandler(async(req,res)=>{
+    let coverlocalpath = req.file?.path;
+    // if(req.files && Array.isArray(req.files.avatar) && req.files.avatar.length > 0){
+    //     avatarlocalpath = req.files.avatar[0].path;
+    // }
+    if(!coverlocalpath){
+        return new apiError(400,"Cover Image not uploaded.")
+    }
+    const cover = await uploadOnCLoud(coverlocalpath);
+
+    if(!avatar.url){
+        return new apiError(400,"Error while uploading cover.")
+    }
+
+    const user = await User.findByIdAndUpdate(req.user?._id,
+    {
+        $set:{coverImage:cover.url}
+    },{new : true}).select("-password -refreshToken");
+
+    return res
+    .status(200)
+    .json(new apiResponse(
+        200,
+        user,
+        "Cover Image updated."
+    ));
+});
 
 export {
     registerUser,
     loginUser,
     logoutUser,
     refreshAccessToken,
-    changePassword
+    changePassword,
+    getcurrentuser,
+    updateInfo,
+    updateavatar,
+    updatecover
 };
