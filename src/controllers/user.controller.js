@@ -220,7 +220,7 @@ const getcurrentuser = asynchandler(async (req,res)=>{
 const updateInfo = asynchandler(async (req,res)=>{
     const {username,email,fullname} = req.body();
     if(!fullname||!email||!username){
-        return new apiError(400,"All fields are required.")
+        throw new apiError(400,"All fields are required.")
     }
     const user =await User.findByIdAndUpdate(
         req.user?._idid,
@@ -248,12 +248,12 @@ const updateavatar = asynchandler(async(req,res)=>{
     //     avatarlocalpath = req.files.avatar[0].path;
     // }
     if(!avatarlocalpath){
-        return new apiError(400,"Avatar Image not uploaded.")
+        throw new apiError(400,"Avatar Image not uploaded.")
     }
     const avatar = await uploadOnCLoud(avatarlocalpath);
 
     if(!avatar.url){
-        return new apiError(400,"Error while uploading avatar.")
+        throw new apiError(400,"Error while uploading avatar.")
     }
 
     const user = await User.findByIdAndUpdate(req.user?._id,
@@ -276,12 +276,12 @@ const updatecover = asynchandler(async(req,res)=>{
     //     avatarlocalpath = req.files.avatar[0].path;
     // }
     if(!coverlocalpath){
-        return new apiError(400,"Cover Image not uploaded.")
+        throw new apiError(400,"Cover Image not uploaded.")
     }
     const cover = await uploadOnCLoud(coverlocalpath);
 
     if(!avatar.url){
-        return new apiError(400,"Error while uploading cover.")
+        throw new apiError(400,"Error while uploading cover.")
     }
 
     const user = await User.findByIdAndUpdate(req.user?._id,
@@ -297,6 +297,16 @@ const updatecover = asynchandler(async(req,res)=>{
         "Cover Image updated."
     ));
 });
+
+// const getuserchannelprofile = asynchandler(async (req,res)=>{
+//     const {username} = req.params;
+    
+//     if(!username?.trim()){
+//         throw new apiError(400,"username is missing.")
+//     }
+
+//     const user = User.find({username})
+// });
 
 export {
     registerUser,
