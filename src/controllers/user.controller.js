@@ -5,6 +5,7 @@ import { uploadOnCLoud } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiresponse.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const isPasswordCorrect = async function(password,user){
     const isCorrect =  await bcrypt.compare(password,user.password);
@@ -303,15 +304,128 @@ const updatecover = asynchandler(async(req,res)=>{
     ));
 });
 
-// const getuserchannelprofile = asynchandler(async (req,res)=>{
-//     const {username} = req.params;
-    
-//     if(!username?.trim()){
-//         throw new apiError(400,"username is missing.")
-//     }
+const getchannel = asynchandler(async(req,res)=>{
+    const {username} = req.params;
 
-//     const user = User.find({username})
-// });
+    if(!username?.trim()){
+        throw new apiError(400, 'Username is required');
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match:{
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            $lookup:{
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscibers"
+            }
+        },
+        {
+            $lookup:{
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields:{
+                subscribersCount:{
+                    $size:"$subscribers"
+                },
+                subscribedToCount:{
+                    $size:"$subscribedTo"
+                },
+                isSubscribed:{
+                    $cond:{
+                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+                        then:true,
+                        else:false
+                    }
+                }
+            }
+        },
+        {
+            $project:{
+                fullname:1,
+                username:1,
+                subscribersCount:1,
+                subscribedToCount:1,
+                isSubscribed:1,
+                avatar:1,
+                coverImage:1,
+                email:1
+            }
+        }
+    ]);
+    console.log(channel);
+    if(!channel?.length){
+        throw new apiError(404,"Data not found");
+    }
+    return res
+    .status(200)
+    .json(new apiResponse(
+        200,
+        channel[0],
+        "Channel fetched successfully."
+    ));
+});
+
+const getwatchHistory = asynchandler(async(req,res)=>{
+    const user = await User.aggregate([
+        {
+            $match:{
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup:{
+                from:"videos",
+                localField:"watchHistory",
+                foreignField:"_id",
+                as:"watchHistory",
+                pipeline:[
+                    {
+                        $lookup:{
+                            from:"users",
+                            localField:"owner",
+                            foreignField:"_id",
+                            as:"owner",
+                            pipeline:[
+                                {
+                                    $project:{
+                                        fullname:1,
+                                        username:1,
+                                        avatar:1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields:{
+                            owner:{
+                                $first:"$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+    ]);
+    return res
+    .status(200)
+    .json(new apiResponse(
+        200,
+        user[0].getwatchHistory,
+        "Watch History fetched."
+    ))
+});
 
 export {
     registerUser,
@@ -322,5 +436,7 @@ export {
     getcurrentuser,
     updateInfo,
     updateavatar,
-    updatecover
+    updatecover,
+    getchannel,
+    getwatchHistory
 };
