@@ -224,12 +224,12 @@ const getcurrentuser = asynchandler(async (req,res)=>{
 });
 
 const updateInfo = asynchandler(async (req,res)=>{
-    const {username,email,fullname} = req.body();
+    const {username,email,fullname} = req.body;
     if(!fullname||!email||!username){
         throw new apiError(400,"All fields are required.")
     }
     const user =await User.findByIdAndUpdate(
-        req.user?._idid,
+        req.user?._id,
         {
             $set:{
                 fullname,
@@ -286,7 +286,7 @@ const updatecover = asynchandler(async(req,res)=>{
     }
     const cover = await uploadOnCLoud(coverlocalpath);
 
-    if(!avatar.url){
+    if(!cover.url){
         throw new apiError(400,"Error while uploading cover.")
     }
 
