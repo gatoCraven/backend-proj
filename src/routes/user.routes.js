@@ -45,7 +45,7 @@ router.route("/update-cover").patch(
     upload.single("cover"),
     updatecover
 );
-router.route("/update-acount").patch(verifyjwt,updateInfo);
+router.route("/update-account").patch(verifyjwt,updateInfo);
 router.route("/current-user").get(verifyjwt,getcurrentuser);
 
 router.route("/c/:username").get(verifyjwt,getchannel);
