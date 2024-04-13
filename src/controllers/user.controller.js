@@ -6,6 +6,12 @@ import { apiResponse } from "../utils/apiresponse.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
+const isPasswordCorrect = async function(password,user){
+    const isCorrect =  await bcrypt.compare(password,user.password);
+    console.log(isCorrect);
+    return isCorrect;
+}
+
 const passwordHash = async function(password){
     // if(!this.isModified(this.password)) {return next;}
     return await bcrypt.hash(password, 10);
@@ -79,26 +85,25 @@ const generateTokens = async (user)=>{
 
 const loginUser = asynchandler(async (req,res)=>{
     const {email,username,password} = req.body;
-
     if(!(email || username)){
-        return apiError(400,"email or username required.");
+        throw new apiError(400,"email or username required.");
     }
     const user = await User.findOne({
         $or:[{username},{email}]
     })
 
     if(!user){
-        return apiError(404,"User not found.")
+        throw new apiError(404,"User not found.")
     }
 
     if(!password){
-        return apiError(400,"Password Required")
+        throw new apiError(400,"Password Required")
     }
 
-    const validatePassword = user.isPasswordCorrect(password);
+    const validatePassword = await user.isPasswordCorrect(password);
 
     if(!validatePassword){
-        return apiError(403,"Bad Credentials")
+        throw new apiError(403,"Bad Credentials");
     }
 
     const {accessToken,refreshToken} = await generateTokens(user);
